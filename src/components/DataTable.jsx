@@ -74,7 +74,6 @@ const DataTable = () => {
   };
 
   const fetchData = async (search, sortedColumn, page, rowsPerPage) => {
-    console.log({ search, sortedColumn, page, rowsPerPage });
     try {
       const url = baseURL + "user/";
       const response = await axios.get(url, {
