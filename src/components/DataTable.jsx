@@ -8,16 +8,19 @@ import {
   TableCell,
   Paper,
   TextField,
-  TablePagination,
   Box,
   Typography,
+  Pagination,
 } from "@mui/material";
 import { ArrowUpward } from "@mui/icons-material";
 
 import axios from "axios";
 import baseURL from "./config";
+import { useTheme } from "@emotion/react";
 
 const DataTable = () => {
+  const theme = useTheme();
+  const itemPerPage = 10;
   const ascendingSortClass = {
     display: "inline-block",
     transform: "rotate(0deg)",
@@ -31,43 +34,24 @@ const DataTable = () => {
   };
 
   const [data, setData] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [filterText, setFilterText] = useState("");
   const [sortedColumn, setSortedColumn] = useState(null);
   const [page, setPage] = useState(0);
   const [sortOrder, setSortOrder] = useState("asc");
-  const [rowsPerPage, setRowsPerPage] = useState(5); // Number of rows per page
+  const [rowsPerPage] = useState(itemPerPage); // Number of rows per page
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
   };
 
-  const handleRowsPerPageChange = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
   const handleSort = (column) => {
     // Check if we are already sorting by this column
     if (sortedColumn === column) {
-      // Reverse the data order if already sorted by the same column
-      const sortedData = [...data].reverse();
-      setData(sortedData);
       setSortedColumn(column);
       setSortOrder(sortOrder === "asc" ? "desc" : "asc"); // Toggle sort order
     } else {
-      // Sort the data based on the selected column
-      const sortedData = [...data].sort((a, b) => {
-        if (a[column] < b[column]) {
-          return -1;
-        }
-        if (a[column] > b[column]) {
-          return 1;
-        }
-        return 0;
-      });
-
       // Set the sorted data and the current sorted column
-      setData(sortedData);
       setSortedColumn(column);
       setSortOrder("asc"); // Default to ascending order
     }
@@ -76,16 +60,17 @@ const DataTable = () => {
   const fetchData = async (search, sortedColumn, page, rowsPerPage) => {
     try {
       const url = baseURL + "user/";
+      let requestedPage = page === 0 ? 1 : page;
       const response = await axios.get(url, {
         params: {
           search,
-          ordering: sortedColumn,
-          page: page + 1,
+          ordering: setSortOrder === "asc" ? "" : "-" + sortedColumn,
+          page: requestedPage,
           page_size: rowsPerPage,
           format: "json",
         },
       });
-      return response.data.results;
+      return response.data;
     } catch (error) {
       throw error;
     }
@@ -100,14 +85,15 @@ const DataTable = () => {
           page,
           rowsPerPage
         );
-        setData(result);
+        setData(result.results);
+        setTotalRows(result.count);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     }
 
     fetchDataAndSetData();
-  }, [filterText, sortedColumn, page, rowsPerPage]);
+  }, [filterText, sortedColumn, totalRows, page, rowsPerPage]);
 
   return (
     <Box marginTop={2}>
@@ -124,7 +110,7 @@ const DataTable = () => {
         <Table>
           <TableHead
             sx={{
-              backgroundColor: "#6366f1",
+              backgroundColor: theme.palette.primary.dark,
             }}
           >
             <TableRow>
@@ -277,9 +263,9 @@ const DataTable = () => {
                   key={index}
                   sx={{
                     ":hover": {
-                      backgroundColor: index % 2 === 0 ? "#c2c2c2" : "#9095eb",
+                      backgroundColor: index % 2 === 0 ? theme.palette.primary.hover : theme.palette.secondary.hover,
                     },
-                    backgroundColor: index % 2 === 0 ? "white" : "#d0d2fb",
+                    backgroundColor: index % 2 === 0 ? theme.palette.primary.light : theme.palette.secondary.light,
                   }}
                 >
                   <TableCell>{row.name}</TableCell>
@@ -300,7 +286,7 @@ const DataTable = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={8} sx={{backgroundColor: theme.palette.secondary.light}}>
                   <Typography variant="h6" align="center">
                     No Records Available
                   </Typography>
@@ -310,14 +296,21 @@ const DataTable = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
-        component="div"
-        count={data.length} // Total number of rows
-        page={page}
-        rowsPerPage={rowsPerPage}
-        onPageChange={handlePageChange}
-        onRowsPerPageChange={handleRowsPerPageChange}
-      />
+      <Box
+        flex={3}
+        p={1}
+        display={"flex"}
+        justifyContent={"center"}
+        marginTop={1}
+      >
+        <Pagination
+          count={Math.floor(totalRows / itemPerPage)}
+          page={page}
+          color="primary"
+          defaultPage={1}
+          onChange={handlePageChange}
+        />
+      </Box>
     </Box>
   );
 };
